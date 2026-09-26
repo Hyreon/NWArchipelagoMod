@@ -93,6 +93,7 @@ namespace NWArchipelago.Modules
         internal static readonly Dictionary<string, string> levelKey = [];
 
         internal static HashSet<int> unlockedLevels = [];
+        internal static Dictionary<int, int> progressiveAccess = [];
         internal static CampaignData campaign;
         internal static CampaignData campaignG;
 
@@ -341,6 +342,73 @@ namespace NWArchipelago.Modules
                 var gd = Singleton<Game>.Instance.GetGameData();
                 newLevel = gd.GetLevelData("HUB_HEAVEN");
                 fromArchive = false;
+            }
+        }
+
+        internal static void AddProgressiveAccess(int groupId)
+        {
+            if (!progressiveAccess.ContainsKey(groupId))
+            {
+                progressiveAccess[groupId] = 1;
+            } else
+            {
+                progressiveAccess[groupId]++;
+            }
+        }
+
+        internal static int GetProgressiveAccess(int groupId)
+        {
+            return progressiveAccess.GetValueOrDefault(groupId, 0);
+        }
+
+        //TODO read from server
+        internal static Cards.Ability[] AbilitiesHandledByProgressiveUnlocks()
+        {
+            return [new Cards.Ability("PISTOL", false),
+                    new Cards.Ability("UZI", false),
+                    new Cards.Ability("MACHINEGUN", false),
+                    new Cards.Ability("RIFLE", false),
+                    new Cards.Ability("SHOTGUN", false),
+                    new Cards.Ability("ROCKETLAUNCHER", false),
+                    new Cards.Ability("PISTOL", true),
+                    new Cards.Ability("UZI", true),
+                    new Cards.Ability("MACHINEGUN", true),
+                    new Cards.Ability("RIFLE", true),
+                    new Cards.Ability("SHOTGUN", true),
+                    new Cards.Ability("ROCKETLAUNCHER", true)];
+        }
+
+        internal static Cards.Ability[] AbilitiesUnlockedFor(int groupId, int count)
+        {
+            switch (count)
+            {
+                case 1:
+                    return [new Cards.Ability("RIFLE", true),
+                            new Cards.Ability("UZI", false)];
+                case 2:
+                    return [new Cards.Ability("PISTOL", false),
+                            new Cards.Ability("UZI", false),
+                            new Cards.Ability("RIFLE", false),
+                            new Cards.Ability("PISTOL", true),
+                            new Cards.Ability("UZI", true),
+                            new Cards.Ability("MACHINEGUN", true),
+                            new Cards.Ability("RIFLE", true),
+                            new Cards.Ability("SHOTGUN", true)];
+                case 3:
+                    return [new Cards.Ability("PISTOL", false),
+                            new Cards.Ability("UZI", false),
+                            new Cards.Ability("MACHINEGUN", false),
+                            new Cards.Ability("RIFLE", false),
+                            new Cards.Ability("SHOTGUN", false),
+                            new Cards.Ability("ROCKETLAUNCHER", false),
+                            new Cards.Ability("PISTOL", true),
+                            new Cards.Ability("UZI", true),
+                            new Cards.Ability("MACHINEGUN", true),
+                            new Cards.Ability("RIFLE", true),
+                            new Cards.Ability("SHOTGUN", true),
+                            new Cards.Ability("ROCKETLAUNCHER", true)];
+                default:
+                    return [];
             }
         }
     }

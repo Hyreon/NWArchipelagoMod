@@ -13,9 +13,11 @@ using I2.Loc;
 using MelonLoader.TinyJSON;
 using NeonLite.Modules;
 using NWArchipelago.Objects;
+using System.ComponentModel;
 using UnityEngine;
 using UnityEngine.Networking;
 using static System.Text.Encoding;
+using static MelonLoader.MelonLogger;
 using static NeonLite.Modules.CommunityMedals;
 using NeonLite.Modules.UI.Status;
 using TMPro;
@@ -55,6 +57,8 @@ namespace NWArchipelago.Modules
 
             Patching.AddPatch(typeof(LevelStats), "SetCollectibleFound", OnCollectible, Patching.PatchTarget.Prefix);
 
+            Patching.AddPatch(typeof(LevelInfo), "SetLevel", SetFlagsByLevel, Patching.PatchTarget.Postfix);
+
             Patching.AddPatch(typeof(MechController), "Die", CheckDeathLink, Patching.PatchTarget.Prefix);
             Patching.AddPatch(typeof(PlayerUI), "OnPlayerDie", SetDeathText, Patching.PatchTarget.Postfix);
         }
@@ -88,7 +92,8 @@ namespace NWArchipelago.Modules
         {
             Ranks = 1,
             Missions,
-            Levels
+            Levels,
+            ProgLevels
         }
 
         internal enum Goal
@@ -193,6 +198,7 @@ namespace NWArchipelago.Modules
                 case 6: // levels
                 case 7:
                     Campaign.unlockedLevels.Add((int)(item.ItemId - 600));
+                    Campaign.AddProgressiveAccess(item.ItemName);
                     return;
                 case 8: // misc
                     type = item.ItemId - 800;
@@ -694,6 +700,32 @@ namespace NWArchipelago.Modules
             __instance.failure.GetComponent<AxKLocalizedText>().SetKey("NWArchipelago/PLAYERUI_DEATHLINKED");
 
             SlotData.DeathL.recent = null;
+        }
+
+
+
+        internal static void DebugLevelInfo(LevelInfo __instance, LevelData level)
+        {
+            NWArchipelago.Log.Msg($"{__instance} {level}");
+        }
+
+        internal static void SetFlagsByLevel(LevelInfo __instance, LevelData level)
+        {
+            Cards.Ability[] locked = Campaign.AbilitiesHandledByProgressiveUnlocks();
+            if (locked.Length == 0)
+            {
+                return;
+            }
+
+            Cards.AssignAbilities(locked, false);
+
+            int count = Campaign.GetProgressiveAccess(level.levelIntegerID);
+
+            Cards.Ability[] unlocked = Campaign.AbilitiesUnlockedFor(level.levelIntegerID, count);
+            Cards.AssignAbilities(unlocked, true);
+
+            string levelName = LocalizationManager.GetTranslation(level.GetLevelDisplayName(), overrideLanguage: "English");
+            NWArchipelago.Log.Msg($"{string.Join(", ", unlocked)} in {levelName}");
         }
     }
 }

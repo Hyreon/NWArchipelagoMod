@@ -228,14 +228,15 @@ namespace NWArchipelago.Modules
             return false;
         }
 
-        internal static void SetOverrides(HashSet<string> set, string value, bool add)
+        internal static void SetOverrides(HashSet<string> set, string value, bool add, bool live = true)
         {
             if (add)
                 set.Add(value);
             else
                 set.Remove(value);
 
-            CheckCards();
+            if (live)
+                CheckCards();
         }
 
         internal static void SetupTestPanel()
@@ -417,6 +418,30 @@ namespace NWArchipelago.Modules
             RM.ui.UpdateCardAmmo(card, card == cards.First());
 
             return false;
+        }
+        internal static void AssignAbilities(Ability[] abilities, bool add)
+        {
+            foreach (Ability ability in abilities)
+            {
+                if (ability.fire)
+                {
+                    SetOverrides(fires, ability.card, add, false);
+                } else
+                {
+                    SetOverrides(discards, ability.card, add, false);
+                }
+            }
+        }
+
+        internal struct Ability(string card, bool fire)
+        {
+            internal string card = card;
+            internal bool fire = fire; //true = fire, false = discard
+
+            public override string ToString()
+            {
+                return String.Format("{0} - {1}", this.card, this.fire ? "FIRE" : "DISCARD");
+            }
         }
     }
 }
