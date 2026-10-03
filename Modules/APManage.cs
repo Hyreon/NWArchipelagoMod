@@ -12,8 +12,10 @@ using HarmonyLib;
 using I2.Loc;
 using MelonLoader.TinyJSON;
 using NeonLite.Modules;
+using NeonLite.Modules.UI.Status;
 using NWArchipelago.Objects;
 using System.ComponentModel;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 using static System.Text.Encoding;
@@ -109,6 +111,7 @@ namespace NWArchipelago.Modules
             public static List<int> missionReqs;
             public static int neonRanks;
             public static UnlockMethod unlockMethod;
+            public static List<List<Cards.Ability>> accessOrder = [];
 
             public static HashSet<MedalEnum> medals;
             public static bool gifts = true;
@@ -197,8 +200,10 @@ namespace NWArchipelago.Modules
                     return;
                 case 6: // levels
                 case 7:
-                    Campaign.unlockedLevels.Add((int)(item.ItemId - 600));
-                    Campaign.AddProgressiveAccess(item.ItemName);
+                    int levelId = (int)(item.ItemId - 600);
+                    Campaign.unlockedLevels.Add(levelId);
+                    Campaign.AddProgressiveAccess(levelId);
+                    NWArchipelago.Log.Msg($"Added to progressive access in {item.ItemName}. Now at {Campaign.GetProgressiveAccess(levelId)}");
                     return;
                 case 8: // misc
                     type = item.ItemId - 800;
@@ -439,7 +444,7 @@ namespace NWArchipelago.Modules
                 .Select(x => char.ToUpperInvariant(x[0]) + x.Substring(1))
                 .Select(x => (MedalEnum)Enum.Parse(typeof(MedalEnum), x))];
 
-            if (SlotData.unlockMethod != UnlockMethod.Levels)
+            if (!UsesLevels())
             {
                 var decoded = new Ascii85().Decode(variant["level_order"] as ProxyString);
                 using MemoryStream decompressed = new();
@@ -471,6 +476,33 @@ namespace NWArchipelago.Modules
                     SlotData.levels.AddRange(sq.missionData.First(x => x.missionID.Contains("RED")).levels);
                     SlotData.levels.AddRange(sq.missionData.First(x => x.missionID.Contains("VIOLET")).levels);
                     SlotData.levels.AddRange(sq.missionData.First(x => x.missionID.Contains("YELLOW")).levels);
+                }
+
+                if (SlotData.unlockMethod == UnlockMethod.ProgLevels)
+                {
+                    NWArchipelago.Log.Msg($"Received data: {variant["access_order"].ToJSON()}");
+                    ProxyArray accessOrderGroups = variant["access_order"] as ProxyArray;
+                    for (int groupIdx = 0; groupIdx < accessOrderGroups.Count; groupIdx++)
+                    {
+                        while (SlotData.accessOrder.Count <= groupIdx)
+                        {
+                            SlotData.accessOrder.Add([]);
+                        }
+                        ProxyArray accessOrder = accessOrderGroups[groupIdx] as ProxyArray;
+                        foreach (string item in accessOrder)
+                        {
+                            NWArchipelago.Log.Msg("Creating item...");
+                            Cards.Ability ability = new Cards.Ability(item);
+                            SlotData.accessOrder[groupIdx].Add(ability);
+                            NWArchipelago.Log.Msg($"{ability} created");
+                        }
+                    }
+                    NWArchipelago.Log.Msg("Produced data: ");
+                    for (var i = 0; i < SlotData.accessOrder.Count; i++)
+                    {
+                        var accessOrder = SlotData.accessOrder[i];
+                        NWArchipelago.Log.Msg($"Level {i} order: {String.Join(", ", accessOrder)}");
+                    }
                 }
             }
 
@@ -599,6 +631,11 @@ namespace NWArchipelago.Modules
             Campaign.HandleSaveCData(true);
         }
 
+        internal static bool UsesLevels()
+        {
+            return SlotData.unlockMethod == UnlockMethod.Levels || SlotData.unlockMethod == UnlockMethod.ProgLevels;
+        }
+
         internal static void Disconnect() => session?.Socket.DisconnectAsync();
 
         internal static void OnHintsReceived(Hint[] hint)
@@ -711,21 +748,19 @@ namespace NWArchipelago.Modules
 
         internal static void SetFlagsByLevel(LevelInfo __instance, LevelData level)
         {
-            Cards.Ability[] locked = Campaign.AbilitiesHandledByProgressiveUnlocks();
-            if (locked.Length == 0)
+            ICollection<Cards.Ability> locked = Campaign.AbilitiesHandledByProgressiveUnlocks();
+            if (locked.Count == 0)
             {
                 return;
             }
 
             Cards.AssignAbilities(locked, false);
 
-            int count = Campaign.GetProgressiveAccess(level.levelIntegerID);
-
-            Cards.Ability[] unlocked = Campaign.AbilitiesUnlockedFor(level.levelIntegerID, count);
+            ICollection<Cards.Ability> unlocked = Campaign.AbilitiesUnlockedFor(level.levelIntegerID);
             Cards.AssignAbilities(unlocked, true);
 
             string levelName = LocalizationManager.GetTranslation(level.GetLevelDisplayName(), overrideLanguage: "English");
-            NWArchipelago.Log.Msg($"{string.Join(", ", unlocked)} in {levelName}");
+            NWArchipelago.Log.Msg($"{string.Join(", ", unlocked)} in {levelName} (id {level.levelIntegerID})");
         }
     }
 }

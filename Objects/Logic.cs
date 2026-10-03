@@ -86,6 +86,7 @@ namespace NWArchipelago.Objects
         {
             var ret = (full ? fullData : logicData).GetOrCreateValue(l);
             ret.level = l;
+            ret.groupId = l.levelIntegerID;
             return ret;
         }
 
@@ -137,17 +138,59 @@ namespace NWArchipelago.Objects
             return tolook.Contains(Cards.EngToID(str));
         }
 
-        internal static bool HasRequirements(LevelRequirements requirements)
+        internal static bool UsingGroupRequirement(LevelRequirements single)
+        {
+            return Campaign.AbilitiesHandledByProgressiveUnlocks().Contains(new Cards.Ability(single));
+        }
+
+        internal static bool GroupHasSingleRequirement(LevelRequirements single, ICollection<Cards.Ability> providedAbilities)
+        {
+            if (single == LevelRequirements.FistOnly)
+                return true;
+            var str = single.ToString();
+
+            bool fire = false;
+            if (str.EndsWith("Fire"))
+            {
+                str = str.Substring(0, str.Length - "Fire".Length);
+                fire = true;
+            }
+            else if (str.EndsWith("Discard"))
+            {
+                str = str.Substring(0, str.Length - "Discard".Length);
+                fire = false;
+            }
+            else if (single == LevelRequirements.Katana)
+            {
+                fire = true;
+            }
+            else if (single == LevelRequirements.BookOfLife)
+            {
+                str = "Book of Life";
+                fire = false;
+            }
+
+            Cards.Ability ability = new(Cards.EngToID(str), fire);
+            return providedAbilities.Contains(ability);
+        }
+
+        internal static bool HasRequirements(LevelRequirements requirements, int groupId)
         {
             if (requirements == LevelRequirements.FistOnly)
                 return true;
 
-            return Enum.GetValues(typeof(LevelRequirements)).Cast<LevelRequirements>()
-                .Where(f => f != LevelRequirements.FistOnly && requirements.HasFlag(f))
-                .All(HasSingleRequirement);
+            IEnumerable<LevelRequirements> reqs = Enum.GetValues(typeof(LevelRequirements)).Cast<LevelRequirements>()
+                .Where(f => f != LevelRequirements.FistOnly && requirements.HasFlag(f));
+            bool met = reqs
+                .All(r => UsingGroupRequirement(r) ?
+                            GroupHasSingleRequirement(r, Campaign.AbilitiesUnlockedFor(groupId))
+                            : HasSingleRequirement(r));
+
+            return met;
         }
 
         LevelData level;
+        private int groupId = -1;
         internal int ranks;
 
         internal readonly Dictionary<MedalEnum, HashSet<LevelRequirements>> perMedalLogic = [];
@@ -159,7 +202,7 @@ namespace NWArchipelago.Objects
                 return false;
             if (level.isSidequest && !APManage.SlotData.sidequests)
                 return false;
-            if (APManage.SlotData.unlockMethod == APManage.UnlockMethod.Levels
+            if (APManage.UsesLevels()
                 && !Campaign.unlockedLevels.Contains(level.levelIntegerID))
                 return false; // we're using level unlocks and yet we don't have it :broken_heart:
             return true;
@@ -178,8 +221,9 @@ namespace NWArchipelago.Objects
             if (!perMedalLogic.TryGetValue(medal, out var logic))
                 return false;
 
-            return logic.Any(HasRequirements);
+            return logic.Any(r => HasRequirements(r, groupId));
         }
+
         internal bool MedalHinted(MedalEnum medal, bool inLogic = true, bool accessible = true) {
             if (inLogic)
             {
@@ -216,7 +260,7 @@ namespace NWArchipelago.Objects
             if (GameDataManager.GetLevelStats(level.levelID).HasCollectibleBeenFound())
                 return false; // we already have it
 
-            return giftLogic.Any(HasRequirements);
+            return giftLogic.Any(r => HasRequirements(r, groupId));
         }
         internal bool GiftHinted(bool inLogic = true, bool accessible = true) {
             if (!APManage.SlotData.gifts || level.isSidequest || GIFTLESS.Contains(level.levelID))
@@ -371,6 +415,7 @@ namespace NWArchipelago.Objects
         static Color greenLight = new Color32(230, 255, 230, 255);
         static Color blueLight = new Color32(153, 218, 255, 255);
 
+        //home base
         internal static Color GetColor(MissionData mission = null, LevelData level = null, MedalEnum medal = MedalEnum.Plus, bool gift = false, bool hints = true)
         {
             bool inl;

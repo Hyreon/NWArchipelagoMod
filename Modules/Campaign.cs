@@ -186,7 +186,7 @@ namespace NWArchipelago.Modules
             ];
             hcd.actionPlaylist.actionPlaylist = [];
 
-            if (SlotData.unlockMethod != UnlockMethod.Levels)
+            if (!UsesLevels())
             {
                 gd.campaigns.RemoveAll(x => x.campaignID == SQCAMPAIGN_ID);
                 campaign.missionData.Clear();
@@ -269,7 +269,7 @@ namespace NWArchipelago.Modules
 
             var cstats = GameDataManager.campaignStats[CAMPAIGN_ID];
 
-            if (SlotData.unlockMethod != UnlockMethod.Levels)
+            if (!UsesLevels())
             {
 
                 int furthest = 0;
@@ -362,7 +362,7 @@ namespace NWArchipelago.Modules
         }
 
         //TODO read from server
-        internal static Cards.Ability[] AbilitiesHandledByProgressiveUnlocks()
+        internal static HashSet<Cards.Ability> AbilitiesHandledByProgressiveUnlocks()
         {
             return [new Cards.Ability("PISTOL", false),
                     new Cards.Ability("UZI", false),
@@ -375,41 +375,60 @@ namespace NWArchipelago.Modules
                     new Cards.Ability("MACHINEGUN", true),
                     new Cards.Ability("RIFLE", true),
                     new Cards.Ability("SHOTGUN", true),
-                    new Cards.Ability("ROCKETLAUNCHER", true)];
+                    new Cards.Ability("ROCKETLAUNCHER", true)]; //hardcoded BS for now
         }
 
-        internal static Cards.Ability[] AbilitiesUnlockedFor(int groupId, int count)
+        internal static List<Cards.Ability> AbilitiesUnlockedFor(int groupId)
         {
-            switch (count)
+            int count = GetProgressiveAccess(groupId);
+            int unlocks = 0;
+            switch (count) //hardcoded BS for now
             {
+                case 0:
+                    unlocks = 0;
+                    break;
                 case 1:
-                    return [new Cards.Ability("RIFLE", true),
-                            new Cards.Ability("UZI", false)];
+                    unlocks = 2;
+                    break;
                 case 2:
-                    return [new Cards.Ability("PISTOL", false),
-                            new Cards.Ability("UZI", false),
-                            new Cards.Ability("RIFLE", false),
-                            new Cards.Ability("PISTOL", true),
-                            new Cards.Ability("UZI", true),
-                            new Cards.Ability("MACHINEGUN", true),
-                            new Cards.Ability("RIFLE", true),
-                            new Cards.Ability("SHOTGUN", true)];
-                case 3:
-                    return [new Cards.Ability("PISTOL", false),
-                            new Cards.Ability("UZI", false),
-                            new Cards.Ability("MACHINEGUN", false),
-                            new Cards.Ability("RIFLE", false),
-                            new Cards.Ability("SHOTGUN", false),
-                            new Cards.Ability("ROCKETLAUNCHER", false),
-                            new Cards.Ability("PISTOL", true),
-                            new Cards.Ability("UZI", true),
-                            new Cards.Ability("MACHINEGUN", true),
-                            new Cards.Ability("RIFLE", true),
-                            new Cards.Ability("SHOTGUN", true),
-                            new Cards.Ability("ROCKETLAUNCHER", true)];
+                    unlocks = 8;
+                    break;
                 default:
-                    return [];
+                    unlocks = 12;
+                    break;
             }
+
+            return SlotData.accessOrder[groupId].GetRange(0, unlocks);
+            //switch (count)
+            //{
+            //    case 1:
+            //        return [new Cards.Ability("RIFLE", true),
+            //                new Cards.Ability("UZI", false)];
+            //    case 2:
+            //        return [new Cards.Ability("PISTOL", false),
+            //                new Cards.Ability("UZI", false),
+            //                new Cards.Ability("RIFLE", false),
+            //                new Cards.Ability("PISTOL", true),
+            //                new Cards.Ability("UZI", true),
+            //                new Cards.Ability("MACHINEGUN", true),
+            //                new Cards.Ability("RIFLE", true),
+            //                new Cards.Ability("SHOTGUN", true)];
+            //    case 3:
+            //        return [new Cards.Ability("PISTOL", false),
+            //                new Cards.Ability("UZI", false),
+            //                new Cards.Ability("MACHINEGUN", false),
+            //                new Cards.Ability("RIFLE", false),
+            //                new Cards.Ability("SHOTGUN", false),
+            //                new Cards.Ability("ROCKETLAUNCHER", false),
+            //                new Cards.Ability("PISTOL", true),
+            //                new Cards.Ability("UZI", true),
+            //                new Cards.Ability("MACHINEGUN", true),
+            //                new Cards.Ability("RIFLE", true),
+            //                new Cards.Ability("SHOTGUN", true),
+            //                new Cards.Ability("ROCKETLAUNCHER", true)];
+            //    default:
+            //        return [];
+            //}
         }
     }
 }

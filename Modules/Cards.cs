@@ -3,6 +3,7 @@ using I2.Loc;
 using MelonLoader;
 using NeonLite;
 using NeonLite.Modules;
+using NWArchipelago.Objects;
 using NWArchipelago.UI.Testing;
 using System;
 using System.Collections.Generic;
@@ -14,6 +15,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
+using static NWArchipelago.Objects.Logic;
 
 namespace NWArchipelago.Modules
 {
@@ -419,7 +421,7 @@ namespace NWArchipelago.Modules
 
             return false;
         }
-        internal static void AssignAbilities(Ability[] abilities, bool add)
+        internal static void AssignAbilities(ICollection<Ability> abilities, bool add)
         {
             foreach (Ability ability in abilities)
             {
@@ -433,10 +435,57 @@ namespace NWArchipelago.Modules
             }
         }
 
-        internal struct Ability(string card, bool fire)
+        internal struct Ability()
         {
-            internal string card = card;
-            internal bool fire = fire; //true = fire, false = discard
+            internal string card;
+            internal bool fire; //true = fire, false = discard
+
+            public Ability(string card, bool fire): this()
+            {
+                this.card = card;
+                this.fire = fire;
+            }
+
+            public Ability(Logic.LevelRequirements single): this()
+            {
+                var str = single.ToString();
+
+                if (str.EndsWith("Fire"))
+                {
+                    str = str.Substring(0, str.Length - "Fire".Length);
+                    fire = true;
+                }
+                else if (str.EndsWith("Discard"))
+                {
+                    str = str.Substring(0, str.Length - "Discard".Length);
+                    fire = false;
+                }
+                else if (single == LevelRequirements.Katana)
+                {
+                    fire = true;
+                }
+                else if (single == LevelRequirements.BookOfLife)
+                {
+                    str = "Book of Life";
+                    fire = false;
+                }
+
+                card = Cards.EngToID(str);
+            }
+
+            public Ability(string item) : this()
+            {
+
+                this.fire = item.EndsWith("Fire");
+                if (item == "Katana")
+                {
+                    this.fire = true;
+                } else if (item == "Book of Life")
+                {
+                    this.fire = false;
+                }
+                this.card = Cards.EngToID(item.Split()[0]);
+            }
 
             public override string ToString()
             {

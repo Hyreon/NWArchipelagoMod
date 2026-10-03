@@ -657,7 +657,7 @@ namespace NWArchipelago.Modules
 
             SetButtonColor(__instance._button, Logic.GetColor(level: ld));
 
-            if (APManage.SlotData.unlockMethod == APManage.UnlockMethod.Levels)
+            if (APManage.UsesLevels())
                 __instance.SetLocked(!Campaign.unlockedLevels.Contains(ld.levelIntegerID));
             if (!ld.isSidequest && !APManage.SlotData.gifts)
                 __instance._loreHolder.SetActive(false);
